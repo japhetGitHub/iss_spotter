@@ -1,3 +1,5 @@
+const request = require('request');
+
 /**
  * Makes a single API request to retrieve the user's IP address.
  * Input:
@@ -6,9 +8,6 @@
  *   - An error, if any (nullable)
  *   - The IP address as a string (null if error). Example: "162.245.144.188"
  */
-
-const request = require('request');
-
 const fetchMyIP = function(callback) {
   // use request to fetch IP address from JSON API
   request('https://api.ipify.org?format=json', (error, response, body) => {
@@ -41,7 +40,6 @@ const fetchMyIP = function(callback) {
  *   - An error, if any (nullable)
  *   - The Coordinates as an object.
  */
-
 const fetchCoordsByIP = function(ip, callback) {
   request(`https://freegeoip.app/json/${ip}`, (error, response, body) => {
     if (error) return callback(error, null);
@@ -83,4 +81,36 @@ const fetchISSFlyOverTimes = function(coords, callback) {
   });
 };
 
-module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
+/**
+ * Orchestrates multiple API requests in order to determine the next 5 upcoming ISS fly overs for the user's current location.
+ * Input:
+ *   - A callback with an error or results. 
+ * Returns (via Callback):
+ *   - An error, if any (nullable)
+ *   - The fly-over times as an array (null if error):
+ *     [ { risetime: <number>, duration: <number> }, ... ]
+ */ 
+const nextISSTimesForMyLocation = function(callback) {
+  fetchMyIP((error, ip) => {
+    if (error) {
+      return callback(error, null);
+    }
+
+    fetchCoordsByIP(ip, (error, coordinates) => {
+      if (error) {
+        return callback(error, null);
+      }
+
+      fetchISSFlyOverTimes(coordinates, (error, flyoverTimes) => {
+        if (error) {
+          console.error("Error fetching ISS Fly Over times: ", error);
+          return callback(error, null);
+        }
+
+        callback(null, flyoverTimes);
+      });
+    });
+  });
+};
+
+module.exports = { nextISSTimesForMyLocation };
